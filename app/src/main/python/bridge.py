@@ -66,7 +66,7 @@ def fetch_info(url):
             'formats': res_formats,
         }
 
-def download(url, format_preset, output_path, ffmpeg_dir, callback):
+def download(url, format_preset, output_path, ffmpeg_dir, callback, cookies_path=None, embed_subtitles=False):
     format_map = {
         'best': 'best',
         '1080p': 'bestvideo[height<=1080]+bestaudio/best',
@@ -97,12 +97,31 @@ def download(url, format_preset, output_path, ffmpeg_dir, callback):
         'noplaylist': True,
     }
 
+    if cookies_path and os.path.exists(cookies_path):
+        opts['cookiefile'] = cookies_path
+
+    if format_preset != 'audio':
+        opts['merge_output_format'] = 'mp4/mkv'
+
+    postprocessors = []
+
     if format_preset == 'audio':
-        opts['postprocessors'] = [{
+        postprocessors.append({
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
-        }]
+        })
+
+    if embed_subtitles:
+        opts['writesubtitles'] = True
+        opts['subtitleslangs'] = ['en', 'all']
+        postprocessors.append({
+            'key': 'FFmpegEmbedSubtitle',
+            'already_have_subtitle': False,
+        })
+
+    if postprocessors:
+        opts['postprocessors'] = postprocessors
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])

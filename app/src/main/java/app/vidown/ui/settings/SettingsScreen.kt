@@ -44,6 +44,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material3.Switch
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -58,6 +68,12 @@ fun SettingsScreen(
     val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
     var isQualityExpanded by remember { mutableStateOf(false) }
     var isThemeExpanded by remember { mutableStateOf(false) }
+    var showLoginDialog by remember { mutableStateOf(false) }
+
+    val youtubeLoggedIn by viewModel.youtubeLoggedIn.collectAsStateWithLifecycle()
+    val instagramLoggedIn by viewModel.instagramLoggedIn.collectAsStateWithLifecycle()
+    val twitterLoggedIn by viewModel.twitterLoggedIn.collectAsStateWithLifecycle()
+    val tiktokLoggedIn by viewModel.tiktokLoggedIn.collectAsStateWithLifecycle()
     val rotationAngle by animateFloatAsState(
         targetValue = if (isQualityExpanded) 180f else 0f,
         label = "ArrowRotation"
@@ -284,6 +300,159 @@ fun SettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = "Embed Subtitles",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = "Download and mux subtitles into video files",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Subtitles,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingContent = {
+                    val embedSubtitles by viewModel.embedSubtitles.collectAsStateWithLifecycle()
+                    Switch(
+                        checked = embedSubtitles,
+                        onCheckedChange = { viewModel.updateEmbedSubtitles(it) }
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = "Platform Accounts",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = "Manage cookies login for restricted platforms",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.clickable { showLoginDialog = true }
+            )
+        }
+
+        if (showLoginDialog) {
+            val context = LocalContext.current
+            val loginLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) {
+                viewModel.checkLoginStatus()
+            }
+
+            AlertDialog(
+                onDismissRequest = { showLoginDialog = false },
+                title = { Text("Site Accounts", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Log in to platform sites to download private, restricted, or age-restricted videos.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+
+                        val platforms = listOf(
+                            "YouTube" to youtubeLoggedIn,
+                            "Instagram" to instagramLoggedIn,
+                            "Twitter" to twitterLoggedIn,
+                            "TikTok" to tiktokLoggedIn
+                        )
+
+                        platforms.forEach { (name, isLoggedIn) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = if (isLoggedIn) "Logged In" else "Logged Out",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isLoggedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isLoggedIn) {
+                                        TextButton(onClick = { viewModel.logoutSite(name) }) {
+                                            Text("Logout", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                    TextButton(onClick = {
+                                        val intent = Intent(context, LoginActivity::class.java).apply {
+                                            putExtra("site_name", name)
+                                        }
+                                        loginLauncher.launch(intent)
+                                    }) {
+                                        Text(if (isLoggedIn) "Re-login" else "Login")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLoginDialog = false }) {
+                        Text("Done")
+                    }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))

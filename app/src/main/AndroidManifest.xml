@@ -33,6 +33,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.settings.LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Vidown" />
+
         <service
             android:name=".service.DownloadService"
             android:foregroundServiceType="dataSync"

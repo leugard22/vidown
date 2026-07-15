@@ -26,6 +26,8 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import app.vidown.data.python.CookieHelper
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -35,6 +37,7 @@ class SettingsViewModel @Inject constructor(
 
     private val defaultQualityKey = stringPreferencesKey("default_quality")
     private val appThemeKey = stringPreferencesKey("app_theme")
+    private val embedSubtitlesKey = booleanPreferencesKey("embed_subtitles")
 
     val defaultQuality: StateFlow<String> = dataStore.data.map { preferences ->
         preferences[defaultQualityKey] ?: "best"
@@ -52,6 +55,26 @@ class SettingsViewModel @Inject constructor(
         initialValue = "system"
     )
 
+    val embedSubtitles: StateFlow<Boolean> = dataStore.data.map { preferences ->
+        preferences[embedSubtitlesKey] ?: false
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    private val _youtubeLoggedIn = MutableStateFlow(false)
+    val youtubeLoggedIn = _youtubeLoggedIn.asStateFlow()
+
+    private val _instagramLoggedIn = MutableStateFlow(false)
+    val instagramLoggedIn = _instagramLoggedIn.asStateFlow()
+
+    private val _twitterLoggedIn = MutableStateFlow(false)
+    val twitterLoggedIn = _twitterLoggedIn.asStateFlow()
+
+    private val _tiktokLoggedIn = MutableStateFlow(false)
+    val tiktokLoggedIn = _tiktokLoggedIn.asStateFlow()
+
     private val _pythonVersion = MutableStateFlow("...")
     val pythonVersion = _pythonVersion.asStateFlow()
 
@@ -62,6 +85,7 @@ class SettingsViewModel @Inject constructor(
     val updateStatus = _updateStatus.asStateFlow()
 
     init {
+        checkLoginStatus()
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val py = Python.getInstance()
@@ -88,6 +112,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             dataStore.edit { preferences ->
                 preferences[appThemeKey] = theme
+            }
+        }
+    }
+
+    fun checkLoginStatus() {
+        _youtubeLoggedIn.value = CookieHelper.hasCookies(context, "youtube")
+        _instagramLoggedIn.value = CookieHelper.hasCookies(context, "instagram")
+        _twitterLoggedIn.value = CookieHelper.hasCookies(context, "twitter")
+        _tiktokLoggedIn.value = CookieHelper.hasCookies(context, "tiktok")
+    }
+
+    fun logoutSite(siteName: String) {
+        CookieHelper.deleteCookies(context, siteName)
+        checkLoginStatus()
+    }
+
+    fun updateEmbedSubtitles(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[embedSubtitlesKey] = enabled
             }
         }
     }

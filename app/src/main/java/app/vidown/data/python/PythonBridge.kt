@@ -74,12 +74,14 @@ class PythonBridge {
         formatPreset: String,
         outputPath: String,
         ffmpegDir: String,
-        callback: ProgressCallback
+        callback: ProgressCallback,
+        cookiesPath: String?,
+        embedSubtitles: Boolean
     ) {
         val py = Python.getInstance()
         val module = py.getModule("bridge")
         try {
-            module.callAttr("download", url, formatPreset, outputPath, ffmpegDir, callback)
+            module.callAttr("download", url, formatPreset, outputPath, ffmpegDir, callback, cookiesPath, embedSubtitles)
         } catch (e: PyException) {
             throw Exception(e.message ?: "Python execution error during download")
         }

@@ -22,6 +22,11 @@ import app.vidown.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import app.vidown.data.python.CookieHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -38,6 +43,9 @@ class DownloadService : Service() {
 
     @Inject
     lateinit var pythonBridge: PythonBridge
+
+    @Inject
+    lateinit var dataStore: DataStore<Preferences>
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
@@ -125,6 +133,11 @@ class DownloadService : Service() {
             }
         }
 
+        val embedSubtitles = dataStore.data.map { preferences ->
+            preferences[booleanPreferencesKey("embed_subtitles")] ?: false
+        }.first()
+        val cookiesPath = CookieHelper.getCombinedCookiesPath(this)
+
         try {
             withContext(Dispatchers.IO) {
                 pythonBridge.startDownload(
@@ -132,7 +145,9 @@ class DownloadService : Service() {
                     formatPreset = currentTask.selectedQuality,
                     outputPath = templatePath,
                     ffmpegDir = ffmpegDir,
-                    callback = callback
+                    callback = callback,
+                    cookiesPath = cookiesPath,
+                    embedSubtitles = embedSubtitles
                 )
             }
 
