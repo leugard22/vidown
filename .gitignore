@@ -1,0 +1,24 @@
+# Built artifacts
+/build
+/*/build
+/captures
+.externalNativeBuild
+.cxx
+/local.properties
+local.properties
+
+# Gradle
+.gradle/
+.kotlin/
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+!.idea/codeStyles/
+!.idea/runConfigurations/
+!.idea/scopes/
+!.idea/vcs.xml
+
+# OS generated files
+.DS_Store
+Thumbs.db

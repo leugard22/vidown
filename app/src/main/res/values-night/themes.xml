@@ -1,0 +1,6 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.Vidown" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize theme colors if needed (handled by Jetpack Compose dynamically) -->
+    </style>
+</resources>
