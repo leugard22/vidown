@@ -40,6 +40,8 @@ class SettingsViewModel @Inject constructor(
     private val embedSubtitlesKey = booleanPreferencesKey("embed_subtitles")
     private val maxConcurrentKey = androidx.datastore.preferences.core.intPreferencesKey("max_concurrent_downloads")
     private val customDownloadDirKey = stringPreferencesKey("custom_download_dir")
+    private val subtitleLangsKey = stringPreferencesKey("subtitle_langs")
+    private val downloadSpeedLimitKey = stringPreferencesKey("download_speed_limit")
 
     val defaultQuality: StateFlow<String> = dataStore.data.map { preferences ->
         preferences[defaultQualityKey] ?: "best"
@@ -65,12 +67,28 @@ class SettingsViewModel @Inject constructor(
         initialValue = false
     )
 
+    val subtitleLangs: StateFlow<String> = dataStore.data.map { preferences ->
+        preferences[subtitleLangsKey] ?: "en"
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "en"
+    )
+
     val maxConcurrentDownloads: StateFlow<Int> = dataStore.data.map { preferences ->
         preferences[maxConcurrentKey] ?: 3
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = 3
+    )
+
+    val downloadSpeedLimit: StateFlow<String> = dataStore.data.map { preferences ->
+        preferences[downloadSpeedLimitKey] ?: "none"
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "none"
     )
 
     val customDownloadDir: StateFlow<String?> = dataStore.data.map { preferences ->
@@ -154,10 +172,26 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateSubtitleLangs(langs: String) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[subtitleLangsKey] = langs
+            }
+        }
+    }
+
     fun updateMaxConcurrentDownloads(limit: Int) {
         viewModelScope.launch {
             dataStore.edit { preferences ->
                 preferences[maxConcurrentKey] = limit
+            }
+        }
+    }
+
+    fun updateDownloadSpeedLimit(limit: String) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[downloadSpeedLimitKey] = limit
             }
         }
     }

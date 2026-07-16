@@ -170,6 +170,20 @@ class DownloadService : Service() {
             val embedSubtitles = dataStore.data.map { preferences ->
                 preferences[booleanPreferencesKey("embed_subtitles")] ?: false
             }.first()
+            val subLangs = dataStore.data.map { preferences ->
+                preferences[stringPreferencesKey("subtitle_langs")] ?: "en"
+            }.first()
+            val speedLimitStr = dataStore.data.map { preferences ->
+                preferences[stringPreferencesKey("download_speed_limit")] ?: "none"
+            }.first()
+            val ratelimit = when (speedLimitStr) {
+                "100k" -> 102400L
+                "500k" -> 512000L
+                "1m" -> 1048576L
+                "2m" -> 2097152L
+                "5m" -> 5242880L
+                else -> null
+            }
             val cookiesPath = CookieHelper.getCombinedCookiesPath(this)
 
             try {
@@ -181,7 +195,9 @@ class DownloadService : Service() {
                         ffmpegDir = ffmpegDir,
                         callback = callback,
                         cookiesPath = cookiesPath,
-                        embedSubtitles = embedSubtitles
+                        embedSubtitles = embedSubtitles,
+                        subLangs = subLangs,
+                        ratelimit = ratelimit
                     )
                 }
 

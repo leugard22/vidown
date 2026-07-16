@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -36,12 +37,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,10 +66,14 @@ fun SettingsScreen(
     val defaultQuality by viewModel.defaultQuality.collectAsStateWithLifecycle()
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     val maxConcurrentDownloads by viewModel.maxConcurrentDownloads.collectAsStateWithLifecycle()
+    val downloadSpeedLimit by viewModel.downloadSpeedLimit.collectAsStateWithLifecycle()
     val customDownloadDir by viewModel.customDownloadDir.collectAsStateWithLifecycle()
+    val subtitleLangs by viewModel.subtitleLangs.collectAsStateWithLifecycle()
     val pythonVersion by viewModel.pythonVersion.collectAsStateWithLifecycle()
     val ytdlVersion by viewModel.ytdlVersion.collectAsStateWithLifecycle()
     val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
+
+    var showSubLangsDialog by remember { mutableStateOf(false) }
 
     val youtubeLoggedIn by viewModel.youtubeLoggedIn.collectAsStateWithLifecycle()
     val instagramLoggedIn by viewModel.instagramLoggedIn.collectAsStateWithLifecycle()
@@ -76,6 +83,7 @@ fun SettingsScreen(
     var isQualityExpanded by remember { mutableStateOf(false) }
     var isThemeExpanded by remember { mutableStateOf(false) }
     var isConcurrentExpanded by remember { mutableStateOf(false) }
+    var isSpeedLimitExpanded by remember { mutableStateOf(false) }
 
     val qualityRotationAngle by animateFloatAsState(
         targetValue = if (isQualityExpanded) 180f else 0f,
@@ -88,6 +96,10 @@ fun SettingsScreen(
     val concurrentRotationAngle by animateFloatAsState(
         targetValue = if (isConcurrentExpanded) 180f else 0f,
         label = "ConcurrentArrowRotation"
+    )
+    val speedLimitRotationAngle by animateFloatAsState(
+        targetValue = if (isSpeedLimitExpanded) 180f else 0f,
+        label = "SpeedLimitArrowRotation"
     )
 
     val qualityOptions = mapOf(
@@ -102,6 +114,15 @@ fun SettingsScreen(
         "system" to "System Default",
         "light" to "Light",
         "dark" to "Dark"
+    )
+
+    val speedLimitOptions = mapOf(
+        "none" to "Unlimited",
+        "100k" to "100 KB/s",
+        "500k" to "500 KB/s",
+        "1m" to "1 MB/s",
+        "2m" to "2 MB/s",
+        "5m" to "5 MB/s"
     )
 
     val context = LocalContext.current
@@ -413,6 +434,92 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
 
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = "Download Speed Limit",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = speedLimitOptions[downloadSpeedLimit] ?: "Unlimited",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.SettingsSuggest,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .rotate(speedLimitRotationAngle)
+                            .size(24.dp)
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    trailingIconColor = MaterialTheme.colorScheme.outline
+                ),
+                modifier = Modifier.clickable { isSpeedLimitExpanded = !isSpeedLimitExpanded }
+            )
+
+            if (isSpeedLimitExpanded) {
+                Spacer(
+                    modifier = Modifier
+                        .height(1.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                speedLimitOptions.forEach { (key, label) ->
+                    val isSelected = key == downloadSpeedLimit
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        },
+                        leadingContent = {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    viewModel.updateDownloadSpeedLimit(key)
+                                    isSpeedLimitExpanded = false
+                                }
+                            )
+                        },
+                        colors = ListItemDefaults.colors(
+                            containerColor = Color.Transparent,
+                            headlineColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.clickable {
+                            viewModel.updateDownloadSpeedLimit(key)
+                            isSpeedLimitExpanded = false
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
             val dirName = if (!customDownloadDir.isNullOrEmpty()) {
                 app.vidown.data.storage.CustomStorageHelper.getDirectoryName(context, customDownloadDir!!) ?: "Custom Folder"
             } else {
@@ -501,6 +608,43 @@ fun SettingsScreen(
                     leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
+
+            if (embedSubtitles) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = "Subtitle Languages",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = subtitleLangs.split(",").joinToString(", ") { it.trim() },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Subtitles,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        headlineColor = MaterialTheme.colorScheme.onSurface,
+                        leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.clickable { showSubLangsDialog = true }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -690,6 +834,135 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(36.dp))
     }
+
+    if (showSubLangsDialog) {
+        SubtitleLangsDialog(
+            currentLangs = subtitleLangs,
+            onDismiss = { showSubLangsDialog = false },
+            onSave = { viewModel.updateSubtitleLangs(it) }
+        )
+    }
+}
+
+@Composable
+fun SubtitleLangsDialog(
+    currentLangs: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    val commonLangs = listOf(
+        "en" to "English",
+        "es" to "Spanish",
+        "fr" to "French",
+        "zh" to "Chinese",
+        "ja" to "Japanese",
+        "de" to "German",
+        "ru" to "Russian",
+        "pt" to "Portuguese",
+        "ar" to "Arabic"
+    )
+    val commonCodes = commonLangs.map { it.first }
+
+    val initialSelected = remember(currentLangs) {
+        currentLangs.split(",")
+            .map { it.trim() }
+            .filter { it in commonCodes }
+    }
+    val selectedCodes = remember { mutableStateListOf<String>().apply { addAll(initialSelected) } }
+
+    val initialCustom = remember(currentLangs) {
+        currentLangs.split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it !in commonCodes }
+            .joinToString(", ")
+    }
+    var customCodesText by remember { mutableStateOf(initialCustom) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Subtitle Languages",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Select preferred subtitle languages to embed:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+
+                commonLangs.forEach { (code, name) ->
+                    val isChecked = selectedCodes.contains(code)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (isChecked) {
+                                    selectedCodes.remove(code)
+                                } else {
+                                    selectedCodes.add(code)
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Checkbox(
+                            checked = isChecked,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    selectedCodes.add(code)
+                                } else {
+                                    selectedCodes.remove(code)
+                                }
+                            }
+                        )
+                        Text(text = name, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = customCodesText,
+                    onValueChange = { customCodesText = it },
+                    label = { Text("Custom Codes") },
+                    placeholder = { Text("e.g. all, zh-Hant, es-orig") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val customList = customCodesText.split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                    val finalLangs = (selectedCodes + customList).distinct().joinToString(",")
+                    onSave(if (finalLangs.isEmpty()) "en" else finalLangs)
+                    onDismiss()
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

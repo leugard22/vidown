@@ -66,7 +66,7 @@ def fetch_info(url):
             'formats': res_formats,
         }
 
-def download(url, format_preset, output_path, ffmpeg_dir, callback, cookies_path=None, embed_subtitles=False):
+def download(url, format_preset, output_path, ffmpeg_dir, callback, cookies_path=None, embed_subtitles=False, sub_langs="en", ratelimit=None):
     format_map = {
         'best': 'best',
         '1080p': 'bestvideo[height<=1080]+bestaudio/best',
@@ -97,6 +97,9 @@ def download(url, format_preset, output_path, ffmpeg_dir, callback, cookies_path
         'noplaylist': True,
     }
 
+    if ratelimit is not None and ratelimit > 0:
+        opts['ratelimit'] = ratelimit
+
     if cookies_path and os.path.exists(cookies_path):
         opts['cookiefile'] = cookies_path
 
@@ -114,7 +117,10 @@ def download(url, format_preset, output_path, ffmpeg_dir, callback, cookies_path
 
     if embed_subtitles:
         opts['writesubtitles'] = True
-        opts['subtitleslangs'] = ['en', 'all']
+        if sub_langs == "all":
+            opts['allsubtitles'] = True
+        else:
+            opts['subtitleslangs'] = [lang.strip() for lang in sub_langs.split(',') if lang.strip()]
         postprocessors.append({
             'key': 'FFmpegEmbedSubtitle',
             'already_have_subtitle': False,
