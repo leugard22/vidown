@@ -1,10 +1,4 @@
 import java.util.Properties
-import java.text.SimpleDateFormat
-import java.util.Date
-
-fun getBuildDate(): String {
-    return SimpleDateFormat("yyyyMMdd").format(Date())
-}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -48,7 +42,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0.${getBuildDate()}"
+        versionName = "2026.07.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
