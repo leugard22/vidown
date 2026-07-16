@@ -1,12 +1,13 @@
 package app.vidown.ui.settings
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,21 +16,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,23 +47,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.Switch
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.content.Intent
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -63,24 +62,32 @@ fun SettingsScreen(
 ) {
     val defaultQuality by viewModel.defaultQuality.collectAsStateWithLifecycle()
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+    val maxConcurrentDownloads by viewModel.maxConcurrentDownloads.collectAsStateWithLifecycle()
+    val customDownloadDir by viewModel.customDownloadDir.collectAsStateWithLifecycle()
     val pythonVersion by viewModel.pythonVersion.collectAsStateWithLifecycle()
     val ytdlVersion by viewModel.ytdlVersion.collectAsStateWithLifecycle()
     val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
-    var isQualityExpanded by remember { mutableStateOf(false) }
-    var isThemeExpanded by remember { mutableStateOf(false) }
-    var showLoginDialog by remember { mutableStateOf(false) }
 
     val youtubeLoggedIn by viewModel.youtubeLoggedIn.collectAsStateWithLifecycle()
     val instagramLoggedIn by viewModel.instagramLoggedIn.collectAsStateWithLifecycle()
     val twitterLoggedIn by viewModel.twitterLoggedIn.collectAsStateWithLifecycle()
     val tiktokLoggedIn by viewModel.tiktokLoggedIn.collectAsStateWithLifecycle()
-    val rotationAngle by animateFloatAsState(
+
+    var isQualityExpanded by remember { mutableStateOf(false) }
+    var isThemeExpanded by remember { mutableStateOf(false) }
+    var isConcurrentExpanded by remember { mutableStateOf(false) }
+
+    val qualityRotationAngle by animateFloatAsState(
         targetValue = if (isQualityExpanded) 180f else 0f,
-        label = "ArrowRotation"
+        label = "QualityArrowRotation"
     )
     val themeRotationAngle by animateFloatAsState(
         targetValue = if (isThemeExpanded) 180f else 0f,
         label = "ThemeArrowRotation"
+    )
+    val concurrentRotationAngle by animateFloatAsState(
+        targetValue = if (isConcurrentExpanded) 180f else 0f,
+        label = "ConcurrentArrowRotation"
     )
 
     val qualityOptions = mapOf(
@@ -96,6 +103,27 @@ fun SettingsScreen(
         "light" to "Light",
         "dark" to "Dark"
     )
+
+    val context = LocalContext.current
+    val dirPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+                viewModel.updateCustomDownloadDir(uri.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val loginLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.checkLoginStatus()
+    }
 
     Column(
         modifier = modifier
@@ -115,7 +143,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        SectionLabel("Preferences")
+        SectionLabel("General Preferences")
         Spacer(modifier = Modifier.height(10.dp))
 
         ElevatedCard(
@@ -154,7 +182,7 @@ fun SettingsScreen(
                         imageVector = Icons.Default.ArrowDropDown,
                         contentDescription = null,
                         modifier = Modifier
-                            .rotate(rotationAngle)
+                            .rotate(qualityRotationAngle)
                             .size(24.dp)
                     )
                 },
@@ -207,19 +235,12 @@ fun SettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(),
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
-        ) {
+
             ListItem(
                 headlineContent = {
                     Text(
@@ -300,17 +321,152 @@ fun SettingsScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
-        ) {
+
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = "Max Concurrent Downloads",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = "$maxConcurrentDownloads active downloads",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.SettingsSuggest,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .rotate(concurrentRotationAngle)
+                            .size(24.dp)
+                    )
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    trailingIconColor = MaterialTheme.colorScheme.outline
+                ),
+                modifier = Modifier.clickable { isConcurrentExpanded = !isConcurrentExpanded }
+            )
+
+            if (isConcurrentExpanded) {
+                Spacer(
+                    modifier = Modifier
+                        .height(1.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                listOf(1, 2, 3, 4, 5).forEach { limit ->
+                    val isSelected = limit == maxConcurrentDownloads
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = "$limit Active Download${if (limit > 1) "s" else ""}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        },
+                        leadingContent = {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    viewModel.updateMaxConcurrentDownloads(limit)
+                                    isConcurrentExpanded = false
+                                }
+                            )
+                        },
+                        colors = ListItemDefaults.colors(
+                            containerColor = Color.Transparent,
+                            headlineColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.clickable {
+                            viewModel.updateMaxConcurrentDownloads(limit)
+                            isConcurrentExpanded = false
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            val dirName = if (!customDownloadDir.isNullOrEmpty()) {
+                app.vidown.data.storage.CustomStorageHelper.getDirectoryName(context, customDownloadDir!!) ?: "Custom Folder"
+            } else {
+                "Default (Movies / Music)"
+            }
+
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = "Download Location",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = dirName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.FolderOpen,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingContent = {
+                    if (!customDownloadDir.isNullOrEmpty()) {
+                        IconButton(onClick = { viewModel.updateCustomDownloadDir(null) }) {
+                            Icon(
+                                imageVector = Icons.Default.RestartAlt,
+                                contentDescription = "Reset Location",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.clickable { dirPickerLauncher.launch(null) }
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            val embedSubtitles by viewModel.embedSubtitles.collectAsStateWithLifecycle()
             ListItem(
                 headlineContent = {
                     Text(
@@ -334,7 +490,6 @@ fun SettingsScreen(
                     )
                 },
                 trailingContent = {
-                    val embedSubtitles by viewModel.embedSubtitles.collectAsStateWithLifecycle()
                     Switch(
                         checked = embedSubtitles,
                         onCheckedChange = { viewModel.updateEmbedSubtitles(it) }
@@ -348,6 +503,80 @@ fun SettingsScreen(
             )
         }
 
+        Spacer(modifier = Modifier.height(28.dp))
+
+        SectionLabel("Site Accounts")
+        Spacer(modifier = Modifier.height(10.dp))
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            val platforms = listOf(
+                "YouTube" to youtubeLoggedIn,
+                "Instagram" to instagramLoggedIn,
+                "Twitter" to twitterLoggedIn,
+                "TikTok" to tiktokLoggedIn
+            )
+
+            platforms.forEachIndexed { index, (name, isLoggedIn) ->
+                ListItem(
+                    headlineContent = {
+                        Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    },
+                    supportingContent = {
+                        Text(
+                            text = if (isLoggedIn) "Logged In" else "Logged Out",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isLoggedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    trailingContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isLoggedIn) {
+                                TextButton(onClick = { viewModel.logoutSite(name) }) {
+                                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                            TextButton(onClick = {
+                                val intent = Intent(context, LoginActivity::class.java).apply {
+                                    putExtra("site_name", name)
+                                }
+                                loginLauncher.launch(intent)
+                            }) {
+                                Text(if (isLoggedIn) "Re-login" else "Login")
+                            }
+                        }
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        headlineColor = MaterialTheme.colorScheme.onSurface,
+                        leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                if (index < platforms.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        SectionLabel("System")
         Spacer(modifier = Modifier.height(10.dp))
 
         ElevatedCard(
@@ -360,21 +589,21 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = {
                     Text(
-                        text = "Platform Accounts",
+                        text = "Python Engine (Chaquopy)",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
                 },
                 supportingContent = {
                     Text(
-                        text = "Manage cookies login for restricted platforms",
+                        text = if (pythonVersion == "...") "Loading..." else "v$pythonVersion",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 },
                 leadingContent = {
                     Icon(
-                        imageVector = Icons.Default.AccountCircle,
+                        imageVector = Icons.Default.Info,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )
@@ -383,98 +612,14 @@ fun SettingsScreen(
                     containerColor = Color.Transparent,
                     headlineColor = MaterialTheme.colorScheme.onSurface,
                     leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.clickable { showLoginDialog = true }
+                )
             )
-        }
 
-        if (showLoginDialog) {
-            val context = LocalContext.current
-            val loginLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.StartActivityForResult()
-            ) {
-                viewModel.checkLoginStatus()
-            }
-
-            AlertDialog(
-                onDismissRequest = { showLoginDialog = false },
-                title = { Text("Site Accounts", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "Log in to platform sites to download private, restricted, or age-restricted videos.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-
-                        val platforms = listOf(
-                            "YouTube" to youtubeLoggedIn,
-                            "Instagram" to instagramLoggedIn,
-                            "Twitter" to twitterLoggedIn,
-                            "TikTok" to tiktokLoggedIn
-                        )
-
-                        platforms.forEach { (name, isLoggedIn) ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        text = if (isLoggedIn) "Logged In" else "Logged Out",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (isLoggedIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                    )
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (isLoggedIn) {
-                                        TextButton(onClick = { viewModel.logoutSite(name) }) {
-                                            Text("Logout", color = MaterialTheme.colorScheme.error)
-                                        }
-                                    }
-                                    TextButton(onClick = {
-                                        val intent = Intent(context, LoginActivity::class.java).apply {
-                                            putExtra("site_name", name)
-                                        }
-                                        loginLauncher.launch(intent)
-                                    }) {
-                                        Text(if (isLoggedIn) "Re-login" else "Login")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showLoginDialog = false }) {
-                        Text("Done")
-                    }
-                }
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
-        }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        SectionLabel("System")
-        Spacer(modifier = Modifier.height(10.dp))
-
-        SettingsRow(
-            icon = Icons.Default.Info,
-            label = "Python Engine (Chaquopy)",
-            value = if (pythonVersion == "...") "Loading..." else "v$pythonVersion"
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
             ListItem(
                 headlineContent = {
                     Text(
@@ -513,21 +658,21 @@ fun SettingsScreen(
                 trailingContent = {
                     when (updateStatus) {
                         UpdateStatus.Checking, UpdateStatus.Downloading -> {
-                            androidx.compose.material3.CircularProgressIndicator(
+                            CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                         is UpdateStatus.UpdateAvailable -> {
-                            androidx.compose.material3.TextButton(
+                            TextButton(
                                 onClick = { viewModel.downloadUpdate() }
                             ) {
                                 Text("Update", fontWeight = FontWeight.Bold)
                             }
                         }
                         else -> {
-                            androidx.compose.material3.TextButton(
+                            TextButton(
                                 onClick = { viewModel.checkForUpdates() }
                             ) {
                                 Text("Check")
@@ -542,6 +687,7 @@ fun SettingsScreen(
                 )
             )
         }
+
         Spacer(modifier = Modifier.height(36.dp))
     }
 }
@@ -552,54 +698,7 @@ private fun SectionLabel(text: String) {
         text = text,
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.outline,
         modifier = Modifier.padding(horizontal = 4.dp)
     )
-}
-
-@Composable
-private fun SettingsRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    onClick: (() -> Unit)? = null
-) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            },
-            leadingContent = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = MaterialTheme.colorScheme.onSurface,
-                leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        )
-    }
 }

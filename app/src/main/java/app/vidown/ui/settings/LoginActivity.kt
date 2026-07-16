@@ -57,6 +57,7 @@ class LoginActivity : ComponentActivity() {
                             title = { Text("Log in to $siteName", style = MaterialTheme.typography.titleMedium) },
                             navigationIcon = {
                                 IconButton(onClick = { finish() }) {
+                                    @Suppress("DEPRECATION")
                                     Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                                 }
                             },
@@ -100,6 +101,7 @@ class LoginActivity : ComponentActivity() {
                                     webChromeClient = android.webkit.WebChromeClient()
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
+                                    @Suppress("DEPRECATION")
                                     settings.databaseEnabled = true
                                     settings.javaScriptCanOpenWindowsAutomatically = true
                                     settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"

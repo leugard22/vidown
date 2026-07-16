@@ -38,6 +38,8 @@ class SettingsViewModel @Inject constructor(
     private val defaultQualityKey = stringPreferencesKey("default_quality")
     private val appThemeKey = stringPreferencesKey("app_theme")
     private val embedSubtitlesKey = booleanPreferencesKey("embed_subtitles")
+    private val maxConcurrentKey = androidx.datastore.preferences.core.intPreferencesKey("max_concurrent_downloads")
+    private val customDownloadDirKey = stringPreferencesKey("custom_download_dir")
 
     val defaultQuality: StateFlow<String> = dataStore.data.map { preferences ->
         preferences[defaultQualityKey] ?: "best"
@@ -61,6 +63,22 @@ class SettingsViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = false
+    )
+
+    val maxConcurrentDownloads: StateFlow<Int> = dataStore.data.map { preferences ->
+        preferences[maxConcurrentKey] ?: 3
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 3
+    )
+
+    val customDownloadDir: StateFlow<String?> = dataStore.data.map { preferences ->
+        preferences[customDownloadDirKey]
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
     )
 
     private val _youtubeLoggedIn = MutableStateFlow(false)
@@ -132,6 +150,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             dataStore.edit { preferences ->
                 preferences[embedSubtitlesKey] = enabled
+            }
+        }
+    }
+
+    fun updateMaxConcurrentDownloads(limit: Int) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[maxConcurrentKey] = limit
+            }
+        }
+    }
+
+    fun updateCustomDownloadDir(uri: String?) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                if (uri != null) {
+                    preferences[customDownloadDirKey] = uri
+                } else {
+                    preferences.remove(customDownloadDirKey)
+                }
             }
         }
     }
