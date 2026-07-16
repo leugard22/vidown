@@ -66,15 +66,17 @@ jobs:
       - name: Rename APKs
         run: |
           cd app/build/outputs/apk/release/
-          for file in app-*-release*.apk; do
-            mv "$file" "${file/app-/vidown-}"
+          for file in app-*.apk; do
+            if [ -f "$file" ]; then
+              mv "$file" "${file/app-/vidown-}"
+            fi
           done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: Vidown v${{ github.ref_name }}
-          files: app/build/outputs/apk/release/vidown-*-release*.apk
+          files: app/build/outputs/apk/release/vidown-*.apk
           body_path: release_notes.md
           generate_release_notes: false
         env:
