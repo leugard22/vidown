@@ -1,3 +1,11 @@
+import java.util.Properties
+import java.text.SimpleDateFormat
+import java.util.Date
+
+fun getBuildDate(): String {
+    return SimpleDateFormat("yyyyMMdd").format(Date())
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -19,12 +27,28 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val localProperties = Properties().apply {
+                val localPropertiesFile = rootProject.file("local.properties")
+                if (localPropertiesFile.exists()) {
+                    localPropertiesFile.inputStream().use { load(it) }
+                }
+            }
+
+            storeFile = localProperties.getProperty("RELEASE_STORE_FILE")?.let { file(it) }
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId = "app.vidown"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.${getBuildDate()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -40,7 +64,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            val releaseConfig = signingConfigs.getByName("release")
+            if (releaseConfig.storeFile != null) {
+                signingConfig = releaseConfig
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 
